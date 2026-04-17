@@ -1,0 +1,20 @@
+const INVESTMENT_ABI = [
+  // invest
+  "function invest(uint256 amount) external",
+
+  // admin credit system
+  "function creditWallet(address user,uint256 amount,uint8 incomeType) external",
+
+  // withdraw functions
+  "function withdrawROI(uint256 amount) external",
+  "function withdrawLevel(uint256 amount) external",
+  "function withdrawSalary(uint256 amount) external",
+  "function withdrawBonus(uint256 amount) external",
+  "function withdrawRank(uint256 amount) external",
+
+  // view dashboard
+  "function getUserData(address user) view returns (uint256,uint256,uint256,uint256,uint256,uint256)",
+
+  // mapping view (optional direct read)
+  "function totalInvestment(address user) view returns (uint256)"
+];
