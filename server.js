@@ -30,7 +30,7 @@ app.use(
 );
 app.use([
   cors({
-    origin: ["http://localhost:5173", "http://192.168.1.6:5173"],
+    origin: ["https://tokenbridge.online", "https://www.tokenbridge.online"],
     credentials: true,
   }),
 ]);
@@ -40,7 +40,6 @@ connectToDB()
   .then(() => {
     console.log("✅ MongoDB Connected Successfully");
     import("./utils/cronJobs.js");
-    import("./workers/withdrawal.worker.js");
 
     const PORT = process.env.PORT || 8000;
     app.listen(PORT, () => {
