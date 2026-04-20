@@ -16,12 +16,14 @@ import {
   getProfile,
   getreferalHistoryByID,
   getRoiIncomeHistory,
+  getStakeIncomeHistory,
   getTeamBusiness,
   getTotalRoi,
   getUsersCountByLevel,
   getUserTeam25Levels,
   helpAndSupport,
   investment,
+  stakeDepositHistory,
   userLogin,
   userLogout,
   userRegister,
@@ -30,6 +32,7 @@ import {
 import IsAuthenticated from "../middlewares/IsAuthenticated.js";
 import { processWithdrawal } from "../controllers/withdrwal.controller.js";
 import { getBanners } from "../controllers/admin.controller.js";
+import { getUserTransactions } from "../controllers/Lldtransaction.controller.js";
 
 const router = express.Router();
 router.route("/register").post(userRegister);
@@ -72,5 +75,12 @@ router
 router.route("/add-walletaddress").post(IsAuthenticated, addWalletAddress);
 router.route("/get-deposit-bonus").get(IsAuthenticated, getAllBonus);
 router.route("/get-level-wise-team").get(IsAuthenticated, getUserTeam25Levels);
+router.route("/get-buy-lld-history").get(IsAuthenticated, getUserTransactions);
+router
+  .route("/get-stake-deposit-history")
+  .get(IsAuthenticated, stakeDepositHistory);
+router
+  .route("/get-stake-income-report")
+  .get(IsAuthenticated, getStakeIncomeHistory);
 
 export default router;

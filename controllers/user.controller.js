@@ -18,6 +18,8 @@ import mongoose from "mongoose";
 import PlacementQueue from "../models/placementQueue.model.js";
 import Bonus from "../models/bonus.model.js";
 import { sendWelcomeEmail } from "../utils/sendMail.js";
+import Stake from "../models/stake.model.js";
+import StakingIncome from "../models/Stakingincome.model.js";
 
 const findAvailablePosition = async (parentId) => {
   const queue = [parentId];
@@ -198,6 +200,9 @@ export const userRegister = async (req, res) => {
       { expiresIn: "7d" },
     );
 
+    newUser.currentToken = token;
+    await newUser.save({ session });
+
     return res.status(201).json({
       success: true,
       message: "User registered successfully",
@@ -227,9 +232,9 @@ export const userLogin = async (req, res) => {
       });
     }
 
-    const user = await UserModel.findOne({ walletAddress }).populate(
-      "referredUsers",
-    );
+    const wallet = walletAddress.toLowerCase();
+
+    const user = await UserModel.findOne({ walletAddress: wallet });
 
     if (!user) {
       return res.status(401).json({
@@ -251,13 +256,18 @@ export const userLogin = async (req, res) => {
       { expiresIn: "7d" },
     );
 
+    user.currentToken = token;
+    await user.save();
+
     return res.status(200).json({
       success: true,
       message: "Login successful",
-      user,
+      user: user,
       token,
     });
   } catch (error) {
+    console.error("Login error:", error);
+
     return res.status(500).json({
       success: false,
       message: "Server error",
@@ -860,8 +870,9 @@ export const getProfile = async (req, res) => {
   try {
     const user = req.user;
     const userId = user._id;
-    const userProfile =
-      await UserModel.findById(userId).populate("referredUsers");
+    const userProfile = await UserModel.findById(userId)
+      .populate("referredUsers")
+      .lean();
     if (!user) {
       return res
         .status(404)
@@ -1618,5 +1629,49 @@ export const getUserTeam25Levels = async (req, res) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Server Error" });
+  }
+};
+
+export const getStakeIncomeHistory = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    if (!userId) {
+      return res.status(401).json({ success: false, message: "Unauthorized" });
+    }
+    const stakeIncomeHistory = await StakingIncome.find({ userId })
+      .sort({
+        createdAt: -1,
+      })
+      .lean();
+    res.json({
+      success: true,
+      data: stakeIncomeHistory,
+      message: "Stake Income History",
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: "Server Error" });
+  }
+};
+
+export const stakeDepositHistory = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    if (!userId) {
+      return res.status(401).json({ success: false, message: "Unauthorized" });
+    }
+    const stakeDepositHistory = await Stake.find({ userId })
+      .sort({
+        createdAt: -1,
+      })
+      .lean();
+    res.json({
+      success: true,
+      data: stakeDepositHistory,
+      message: "Stake Deposit History",
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: "Server Error" });
   }
 };

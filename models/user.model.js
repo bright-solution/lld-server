@@ -26,7 +26,7 @@ const userSchema = new mongoose.Schema(
       type: String,
       unique: true,
       sparse: true,
-      index: true, // 🔥 fast login
+      index: true,
     },
 
     isVerified: { type: Boolean, default: false },
@@ -82,7 +82,6 @@ const userSchema = new mongoose.Schema(
       default: null,
     },
 
-    // 🔥 IMPORTANT FOR OPTIMIZATION
     hasEmptySlot: {
       type: Boolean,
       default: true,
@@ -96,7 +95,6 @@ const userSchema = new mongoose.Schema(
       },
     ],
 
-    // 📊 INVESTMENTS
     investments: [
       {
         type: mongoose.Schema.Types.ObjectId,
@@ -110,7 +108,6 @@ const userSchema = new mongoose.Schema(
     totalInvestment: { type: Number, default: 0 },
     activeDate: { type: Date, default: null },
 
-    // 💰 EARNINGS
     totalEarnings: { type: Number, default: 0 },
     currentEarnings: { type: Number, default: 0 },
     totalPayouts: { type: Number, default: 0 },
@@ -119,29 +116,15 @@ const userSchema = new mongoose.Schema(
     // 📈 ROI
     dailyRoi: { type: Number, default: 0 },
     totalRoi: { type: Number, default: 0 },
+    currentTokens: { type: Number, default: 0 },
 
-    // 💸 MLM INCOME
     levelIncome: { type: Number, default: 0 },
     directReferalAmount: { type: Number, default: 0 },
 
-    teamRewards: { type: Number, default: 0 },
-    totalTeamRewards: { type: Number, default: 0 },
-    teamRewardsget: { type: Boolean, default: false },
-
-    // 🏆 MONTHLY REWARDS
-    monthlyRewards: { type: Number, default: 0 },
-    totalMonthlyRewards: { type: Number, default: 0 },
-    salaryLevel: { type: String, default: null },
-
-    lastRewardMilestone: { type: Number, default: 0 },
-    lastRewardDate: { type: Date, default: null },
-
-    // 💳 WITHDRAWAL
     canWithdraw: { type: Boolean, default: false },
     withdrawalCount: { type: Number, default: 0 },
     lastWithdrawalDate: Date,
 
-    // total team
     levelWiseTeam: {
       type: Map,
       of: Number,
@@ -153,7 +136,6 @@ const userSchema = new mongoose.Schema(
       default: 0,
     },
 
-    // valid users (investment wale)
     validLevelWiseTeam: {
       type: Map,
       of: Number,
