@@ -15,7 +15,12 @@ const __dirname = dirname(__filename);
 dotenv.config();
 const app = express();
 app.use("/uploads", express.static(join(__dirname, "uploads")));
-const allowedOrigins = ["http://localhost:5173"];
+const allowedOrigins = [
+  "https://tokenbridge.online",
+  "https://www.tokenbridge.online",
+  "http://localhost:5173",
+];
+
 app.use(express.json({ limit: "100mb" }));
 app.use(express.urlencoded({ extended: true, limit: "100mb" }));
 
@@ -30,19 +35,16 @@ app.use(
     },
   }),
 );
-app.use([
-  cors({
-    origin: [
-      "https://tokenbridge.online",
-      "https://www.tokenbridge.online",
-      "http://localhost:5173",
-      "http://192.168.1.25:5173",
-      "http://192.168.1.26:5173",
-      "http://192.168.1.15:5173",
-    ],
-    credentials: true,
-  }),
-]);
+
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+
+  if (!origin || allowedOrigins.includes(origin)) {
+    next();
+  } else {
+    return res.status(403).json({ message: "Forbidden request" });
+  }
+});
 app.use("/api/users", UserRouter);
 app.use("/api/admin", AdminRouter);
 app.use("/api/lld", lldRouter);
