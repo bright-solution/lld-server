@@ -20,6 +20,7 @@ import Bonus from "../models/bonus.model.js";
 import { sendWelcomeEmail } from "../utils/sendMail.js";
 import Stake from "../models/stake.model.js";
 import StakingIncome from "../models/Stakingincome.model.js";
+import { create } from "domain";
 
 const findAvailablePosition = async (parentId) => {
   const queue = [parentId];
@@ -256,7 +257,7 @@ export const userLogin = async (req, res) => {
       { expiresIn: "7d" },
     );
 
-    user.currentToken = token;
+    user.currentTokens = token;
     await user.save();
 
     return res.status(200).json({
@@ -1598,8 +1599,7 @@ export const getUserTeam25Levels = async (req, res) => {
         isVerified: user.isVerified,
         rank: user.rank,
         totalEarnings: user.totalEarnings,
-
-        // 🔥 NEW FIELDS
+        createdAt: user.createdAt,
         teamCount: user.teamCount,
         validTeamCount: user.validTeamCount,
         business: userBusiness,
@@ -1669,6 +1669,28 @@ export const stakeDepositHistory = async (req, res) => {
       success: true,
       data: stakeDepositHistory,
       message: "Stake Deposit History",
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: "Server Error" });
+  }
+};
+
+export const getWithdrawalHistory = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    if (!userId) {
+      return res.status(401).json({ success: false, message: "Unauthorized" });
+    }
+    const withdrawalHistory = await Withdrawal.find({ userId })
+      .sort({
+        createdAt: -1,
+      })
+      .lean();
+    res.json({
+      success: true,
+      data: withdrawalHistory,
+      message: "Withdrawal History",
     });
   } catch (error) {
     console.error(error);

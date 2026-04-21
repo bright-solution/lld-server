@@ -15,21 +15,25 @@ const withdrawalSchema = new mongoose.Schema(
       type: Number,
       required: true,
     },
-    netAmountSent: {
-      type: Number,
-      required: true,
+
+    network: {
+      type: String,
+      enum: ["ethereum", "binance", "polygon"],
+      default: "ethereum",
     },
-    feeAmount: {
-      type: Number,
-      required: true,
+    token: {
+      type: String,
+      enum: ["LLD", "USDT", "BUSD"],
+      default: "LLD",
     },
+
     transactionHash: {
       type: String,
-      default: ""
+      default: "",
     },
     status: {
       type: String,
-      enum: ["pending", "approved", "rejected"],
+      enum: ["pending", "completed", "failed"],
       default: "pending",
       required: true,
     },
@@ -44,7 +48,7 @@ const withdrawalSchema = new mongoose.Schema(
   },
   {
     timestamps: true,
-  }
+  },
 );
 
 const Withdrawal = mongoose.model("Withdrawal", withdrawalSchema);

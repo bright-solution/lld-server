@@ -21,6 +21,8 @@ import Level from "../models/level.model.js";
 import Package from "../models/Package.model.js";
 import { distributeLevelIncomeOnRoi } from "../utils/levelIncome.js";
 import Bonus from "../models/bonus.model.js";
+import Stake from "../models/stake.model.js";
+import StakingIncome from "../models/Stakingincome.model.js";
 
 export const adminRegister = async (req, res) => {
   try {
@@ -171,7 +173,11 @@ export const allUsers = async (req, res) => {
       });
     }
 
-    const users = await UserModel.find();
+    const users = await UserModel.find()
+      .select(
+        "username walletAddress totalInvestment totalEarnings isVerified totalPayouts",
+      )
+      .lean();
     if (!users || users.length === 0) {
       return res.status(200).json({
         message: "No users found",
@@ -289,114 +295,183 @@ export const getAllIncomes = async (req, res) => {
 
     const totalUsers = await UserModel.countDocuments();
 
-    const totalInvestmentResult = await UserModel.aggregate([
-      {
-        $group: {
-          _id: null,
-          totalInvestment: { $sum: "$totalInvestment" },
-        },
-      },
-    ]);
-    const totalInvestment = totalInvestmentResult[0]?.totalInvestment || 0;
-    // console.log("Total Investment:", totalInvestment);
-    // console.log("Total Users:", totalUsers);
+    // Active users = users with at least one active stake
+    const activeUserIds = await Stake.distinct("userId", { status: "active" });
+    const activeUsers = activeUserIds.length;
+    const inactiveUsers = totalUsers - activeUsers;
 
-    // ✅ Today Investment
     const todayUsers = await UserModel.find({
       investmentDate: { $gte: todayStart, $lte: todayEnd },
     });
-    const todayInvestment = todayUsers.reduce(
-      (sum, user) => sum + (user.totalInvestment || 0),
-      0,
-    );
 
-    // ROI
-    const rois = await Aroi.find({});
-    const totalRoi = rois.reduce((sum, roi) => sum + roi.roiAmount, 0);
+    const stakeStats = await Stake.aggregate([
+      {
+        $facet: {
+          total: [
+            {
+              $group: {
+                _id: null,
+                totalStaked: { $sum: "$stakedAmount" },
+                totalCount: { $sum: 1 },
+              },
+            },
+          ],
+          today: [
+            { $match: { createdAt: { $gte: todayStart, $lte: todayEnd } } },
+            {
+              $group: {
+                _id: null,
+                todayStaked: { $sum: "$stakedAmount" },
+                todayCount: { $sum: 1 },
+              },
+            },
+          ],
+          byStatus: [
+            {
+              $group: {
+                _id: "$status",
+                amount: { $sum: "$stakedAmount" },
+                count: { $sum: 1 },
+              },
+            },
+          ],
+          activeStakeAmount: [
+            { $match: { status: "active" } },
+            {
+              $group: {
+                _id: null,
+                amount: { $sum: "$stakedAmount" },
+              },
+            },
+          ],
+        },
+      },
+    ]);
 
-    const todayRois = await Aroi.find({
-      creditedOn: { $gte: todayStart, $lte: todayEnd },
+    const totalStakedAmount = stakeStats[0].total[0]?.totalStaked || 0;
+    const todayStakedAmount = stakeStats[0].today[0]?.todayStaked || 0;
+
+    const stakeStatusBreakdown = {
+      active: { count: 0, amount: 0 },
+      completed: { count: 0, amount: 0 },
+      cancelled: { count: 0, amount: 0 },
+    };
+    stakeStats[0].byStatus.forEach((s) => {
+      if (stakeStatusBreakdown[s._id]) {
+        stakeStatusBreakdown[s._id] = { count: s.count, amount: s.amount };
+      }
     });
-    const todayRoi = todayRois.reduce((sum, roi) => sum + roi.roiAmount, 0);
 
-    // Level Income
-    const levelIncomes = await LevelIncome.find({});
-    const totalLevelIncome = levelIncomes.reduce(
-      (sum, inc) => sum + inc.amount,
-      0,
-    );
-    const todayLevelIncomes = await LevelIncome.find({
-      createdAt: { $gte: todayStart, $lte: todayEnd },
+    // ============================================
+    // STAKING ROI INCOME — daily ROI credited to users
+    // ============================================
+    const stakingIncomeStats = await StakingIncome.aggregate([
+      {
+        $facet: {
+          total: [
+            {
+              $group: {
+                _id: null,
+                totalIncome: { $sum: "$incomeAmount" },
+              },
+            },
+          ],
+          today: [
+            { $match: { creditedAt: { $gte: todayStart, $lte: todayEnd } } },
+            {
+              $group: {
+                _id: null,
+                todayIncome: { $sum: "$incomeAmount" },
+              },
+            },
+          ],
+        },
+      },
+    ]);
+    const totalStakingRoi = stakingIncomeStats[0].total[0]?.totalIncome || 0;
+    const todayStakingRoi = stakingIncomeStats[0].today[0]?.todayIncome || 0;
+
+    // ============================================
+    // WITHDRAWAL STATS — with status breakdown
+    // ============================================
+    const withdrawalStats = await Withdrawal.aggregate([
+      {
+        $facet: {
+          total: [
+            {
+              $group: {
+                _id: null,
+                totalAmount: { $sum: "$amount" },
+                totalNetSent: { $sum: "$netAmountSent" },
+                totalFees: { $sum: "$feeAmount" },
+                count: { $sum: 1 },
+              },
+            },
+          ],
+          today: [
+            { $match: { createdAt: { $gte: todayStart, $lte: todayEnd } } },
+            {
+              $group: {
+                _id: null,
+                todayAmount: { $sum: "$amount" },
+                todayNetSent: { $sum: "$netAmountSent" },
+                count: { $sum: 1 },
+              },
+            },
+          ],
+          byStatus: [
+            {
+              $group: {
+                _id: "$status",
+                amount: { $sum: "$amount" },
+                count: { $sum: 1 },
+              },
+            },
+          ],
+        },
+      },
+    ]);
+
+    const totalWithdrawals = withdrawalStats[0].total[0]?.totalAmount || 0;
+
+    const todayWithdrawal = withdrawalStats[0].today[0]?.todayAmount || 0;
+
+    const withdrawalStatusBreakdown = {
+      pending: { count: 0, amount: 0 },
+      completed: { count: 0, amount: 0 },
+      failed: { count: 0, amount: 0 },
+    };
+    withdrawalStats[0].byStatus.forEach((s) => {
+      if (withdrawalStatusBreakdown[s._id]) {
+        withdrawalStatusBreakdown[s._id] = { count: s.count, amount: s.amount };
+      }
     });
-    const todayLevelIncome = todayLevelIncomes.reduce(
-      (sum, inc) => sum + inc.amount,
-      0,
-    );
-
-    // Referral Income
-    const referrals = await ReferalBonus.find({});
-    const totalDirectReferral = referrals.reduce(
-      (sum, ref) => sum + ref.amount,
-      0,
-    );
-    const todayReferrals = await ReferalBonus.find({
-      date: { $gte: todayStart, $lte: todayEnd },
-    });
-    const todayDirectReferral = todayReferrals.reduce(
-      (sum, ref) => sum + ref.amount,
-      0,
-    );
-
-    // Withdrawals
-    const withdrawals = await Withdrawal.find({});
-    const totalWithdrawals = withdrawals.reduce((sum, w) => sum + w.amount, 0);
-    const todayWithdrawals = await Withdrawal.find({
-      createdAt: { $gte: todayStart, $lte: todayEnd },
-    });
-    const todayWithdrawal = todayWithdrawals.reduce(
-      (sum, w) => sum + w.amount,
-      0,
-    );
-
-    // ✅ One-Time Team Income
-    const teamRewards = await OneTimeReward.find({});
-    const totalOneTimeTeamIncome = teamRewards.reduce(
-      (sum, reward) => sum + reward.amount,
-      0,
-    );
-    const todayOneTimeTeamIncome = teamRewards
-      .filter((r) => r.createdAt >= todayStart && r.createdAt <= todayEnd)
-      .reduce((sum, reward) => sum + reward.amount, 0);
-
-    // ✅ Monthly Team Income
-    const monthlyRewards = await MonthlyRewards.find({});
-    const totalMonthlyTeamIncome = monthlyRewards.reduce(
-      (sum, reward) => sum + reward.amount,
-      0,
-    );
-    const todayMonthlyTeamIncome = monthlyRewards
-      .filter((r) => r.createdAt >= todayStart && r.createdAt <= todayEnd)
-      .reduce((sum, reward) => sum + reward.amount, 0);
 
     return res.status(200).json({
       message: "Platform Income Summary",
       success: true,
       data: {
-        totalUsers,
-        totalInvestment,
-        todayInvestment,
-        totalRoi,
-        todayRoi,
-        totalLevelIncome,
-        todayLevelIncome,
-        totalDirectReferral,
-        todayDirectReferral,
-        totalWithdrawals,
-        todayWithdrawal,
-        totalOneTimeTeamIncome,
-        todayOneTimeTeamIncome,
-        totalMonthlyTeamIncome,
-        todayMonthlyTeamIncome,
+        users: {
+          total: totalUsers,
+          active: activeUsers,
+          inactive: inactiveUsers,
+          todayUsers: todayUsers.length,
+        },
+
+        investment: {
+          totalStakedAmount,
+          todayStakedAmount,
+        },
+
+        roiIncome: {
+          total: totalStakingRoi,
+          today: todayStakingRoi,
+        },
+
+        withdrawal: {
+          totalAmount: totalWithdrawals,
+          todayAmount: todayWithdrawal,
+        },
       },
     });
   } catch (error) {
@@ -1429,6 +1504,80 @@ export const getAllDepositBonus = async (req, res) => {
     });
   } catch (error) {
     console.error("Error in getAllDepositBonuses:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Something went wrong",
+    });
+  }
+};
+export const getStakeIncomeHistory = async (req, res) => {
+  try {
+    const userId = req.admin;
+    if (!userId) {
+      return res.status(401).json({
+        message: "You are not authorized",
+      });
+    }
+    const stakeIncomeHistory = await StakingIncome.find()
+      .populate("userId", "username")
+      .lean();
+    return res.status(200).json({
+      success: true,
+      message: "Stake Income History fetched successfully",
+      data: stakeIncomeHistory,
+    });
+  } catch (error) {
+    console.error("Error in getStakeIncomeHistory:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Something went wrong",
+    });
+  }
+};
+
+export const getDepositHistory = async (req, res) => {
+  try {
+    const userId = req.admin._id;
+    if (!userId) {
+      return res.status(401).json({
+        message: "You are not authorized",
+      });
+    }
+    const depositHistory = await Stake.find()
+      .populate("userId", "username")
+      .lean();
+    return res.status(200).json({
+      success: true,
+      message: "Deposit History fetched successfully",
+      data: depositHistory,
+    });
+  } catch (error) {
+    console.error("Error in getDepositHistory:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Something went wrong",
+    });
+  }
+};
+
+export const getAllWithdrawals = async (req, res) => {
+  try {
+    const userId = req.admin._id;
+    if (!userId) {
+      return res.status(401).json({
+        message: "You are not authorized",
+      });
+    }
+    const withdrawals = await Withdrawal.find()
+      .populate("userId", "username")
+      .lean();
+    return res.status(200).json({
+      success: true,
+      message: "Withdrawals fetched successfully",
+      data: withdrawals,
+    });
+  } catch (error) {
+    console.error("Error in getAllWithdrawals:", error);
     return res.status(500).json({
       success: false,
       message: "Something went wrong",

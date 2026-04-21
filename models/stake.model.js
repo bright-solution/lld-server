@@ -14,6 +14,8 @@ const stakeSchema = new mongoose.Schema(
       required: true,
       lowercase: true,
       trim: true,
+      index: true,
+      match: [/^0x[a-fA-F0-9]{40}$/, "Invalid Ethereum address"],
     },
 
     txHash: {
@@ -21,12 +23,43 @@ const stakeSchema = new mongoose.Schema(
       required: true,
       unique: true,
       trim: true,
+      lowercase: true,
+      match: [/^0x[a-fA-F0-9]{64}$/, "Invalid transaction hash"],
     },
 
     stakedAmount: {
       type: Number,
       required: true,
       min: [0.0001, "Stake amount too low"],
+    },
+
+    lockPeriodDays: {
+      type: Number,
+      required: true,
+      min: [1, "Lock period too short"],
+      max: [3650, "Lock period too long"],
+      default: 365,
+    },
+
+    startDate: {
+      type: Date,
+      required: true,
+      default: Date.now,
+    },
+    unlockDate: {
+      type: Date,
+      required: true,
+    },
+
+    endDate: {
+      type: Date,
+      required: true,
+    },
+
+    isLocked: {
+      type: Boolean,
+      required: true,
+      default: true,
     },
 
     status: {
@@ -38,6 +71,10 @@ const stakeSchema = new mongoose.Schema(
   },
   { timestamps: true },
 );
+
+// Compound indexes for common queries
+stakeSchema.index({ userId: 1, status: 1 });
+stakeSchema.index({ endDate: 1, isLocked: 1 }); // cron job ke liye
 
 const Stake = mongoose.model("Stake", stakeSchema);
 

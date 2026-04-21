@@ -1,18 +1,28 @@
 import Stake from "../models/stake.model.js";
+import UserModel from "../models/user.model.js";
 
+const LOCK_PERIOD_DAYS = 365;
+const LOCK_PERIOD_MS = LOCK_PERIOD_DAYS * 24 * 60 * 60 * 1000;
 export const createStake = async (req, res) => {
   try {
-    const { walletAddress, stakedAmount, txHash } = req.body;
+    const { walletAddress, stakeAmount, txHash } = req.body;
     const userId = req.user._id;
+    const user = await UserModel.findById(userId);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found.",
+      });
+    }
 
-    if (!walletAddress || !stakedAmount || !txHash) {
+    if (!walletAddress || !stakeAmount || !txHash) {
       return res.status(400).json({
         success: false,
         message: "walletAddress, stakedAmount aur txHash required hain.",
       });
     }
 
-    if (isNaN(stakedAmount) || Number(stakedAmount) <= 0) {
+    if (isNaN(stakeAmount) || Number(stakeAmount) <= 0) {
       return res.status(400).json({
         success: false,
         message: "Invalid stake amount.",
@@ -27,29 +37,34 @@ export const createStake = async (req, res) => {
       });
     }
 
+    // Lock period calculation — 1 year
+    const startDate = new Date();
+    const unlockDate = new Date(startDate.getTime() + LOCK_PERIOD_MS);
     const stake = await Stake.create({
       userId,
       walletAddress: walletAddress.toLowerCase(),
-      stakedAmount: Number(stakedAmount),
+      stakedAmount: Number(stakeAmount),
       txHash,
       status: "active",
+      startDate,
+      unlockDate,
+      endDate: unlockDate,
+      lockPeriodDays: LOCK_PERIOD_DAYS,
+      isLocked: true,
     });
+    user.totalInvestment += Number(stakeAmount);
+    if (user.totalInvestment === 0) {
+      user.isVerified = true;
+      user.activeDate = new Date();
+    }
 
+    await user.save();
     return res.status(201).json({
       success: true,
-      message: "Stake save ho gaya!",
-      data: {
-        stakeId: stake._id,
-        stakedAmount: stake.stakedAmount,
-        dailyReward: stake.dailyRewardAmount,
-        monthlyReward: stake.totalExpectedReward,
-        startDate: stake.startDate,
-        endDate: stake.endDate,
-        txHash: stake.txHash,
-      },
+      message: "Staking completed Enjoy your rewards.",
     });
   } catch (err) {
-    console.error("[createStake]", err.message);
+    console.log("[createStake]", err.message);
     return res.status(500).json({ success: false, message: "Server error." });
   }
 };

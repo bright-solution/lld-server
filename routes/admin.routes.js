@@ -2,7 +2,6 @@ import express from "express";
 import {
   adminInvestment,
   adminLogin,
-  adminManualAddMoney,
   adminRegister,
   allUsers,
   allWithdrwal,
@@ -15,14 +14,17 @@ import {
   getAllReferalBonus,
   getAllSalaryIncomeHistory,
   getAllUsers,
+  getAllWithdrawals,
   getBanners,
   getCarFundingIncomeHistory,
   getDailyRoi,
+  getDepositHistory,
   getLevelConfiguration,
   getLevelIncomeHistory,
   getOneTimeTeamRewardsHistory,
   getProfile,
   getRoiHistory,
+  getStakeIncomeHistory,
   getTotalInvestedUsers,
   monthlyIncomeHistory,
   ticketApprove,
@@ -38,10 +40,7 @@ import { createPlan } from "../controllers/plan.controller.js";
 import { isAdminAuthenticated } from "../middlewares/adminMiddleware.js";
 import upload from "../utils/multer.js";
 import bannerUpload from "../utils/multer.js";
-import {
-  approveWithdrawal,
-  rejectWithdrawal,
-} from "../controllers/withdrwal.controller.js";
+import { getWithdrawalHistory } from "../controllers/user.controller.js";
 
 const router = express.Router();
 
@@ -90,10 +89,7 @@ router.route("/admin-topup").post(isAdminAuthenticated, adminInvestment);
 router
   .route("/user-withdrawal-unblock")
   .post(isAdminAuthenticated, toggleWithdrawalAccess);
-router
-  .route("/withdrawal-approve")
-  .post(isAdminAuthenticated, approveWithdrawal);
-router.route("/withdrawal-reject").post(isAdminAuthenticated, rejectWithdrawal);
+
 router.route("/user-block/:userId").post(isAdminAuthenticated, toggleUserLogin);
 router
   .route("/get-level-configuration")
@@ -110,4 +106,14 @@ router
 router
   .route("/get-deposit-bonus-history")
   .get(isAdminAuthenticated, getAllDepositBonus);
+router
+  .route("/get-stake-income-history")
+  .get(isAdminAuthenticated, getStakeIncomeHistory);
+router
+  .route("/get-deposit-history")
+  .get(isAdminAuthenticated, getDepositHistory);
+router
+  .route("/get-withdrawal-history")
+  .get(isAdminAuthenticated, getAllWithdrawals);
+
 export default router;

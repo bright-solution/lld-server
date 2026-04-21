@@ -22,7 +22,11 @@ export const distributeDailyROI = async () => {
       );
 
       await UserModel.findByIdAndUpdate(user._id, {
-        $inc: { totalRoi: dailyIncome },
+        $inc: {
+          totalRoi: dailyIncome,
+          totalEarnings: dailyIncome,
+          currentEarnings: dailyIncome,
+        },
         set: { dailyRoi: dailyIncome },
       });
       await StakingIncome.create({

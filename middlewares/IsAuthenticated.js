@@ -104,11 +104,6 @@ const IsAuthenticated = async (req, res, next) => {
         ? req.headers.authorization.split(" ")[1]
         : null);
 
-    console.log(
-      "Cookie token:",
-      req.cookies?.token ? "found ✅" : "missing ❌",
-    );
-
     if (!token || token === "null" || token === "undefined") {
       return res.status(401).json({ message: "You are not authenticated." });
     }
