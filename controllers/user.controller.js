@@ -238,7 +238,7 @@ export const userLogin = async (req, res) => {
     const user = await UserModel.findOne({ walletAddress: wallet });
 
     if (!user) {
-      return res.status(401).json({
+      return res.status(404).json({
         success: false,
         message: "You are not registered yet, Please sign up first.",
       });
