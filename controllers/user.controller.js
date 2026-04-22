@@ -240,7 +240,7 @@ export const userLogin = async (req, res) => {
     if (!user) {
       return res.status(401).json({
         success: false,
-        message: "User not found",
+        message: "You are not registered yet, Please sign up first.",
       });
     }
 
