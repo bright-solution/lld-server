@@ -257,7 +257,6 @@ export const userLogin = async (req, res) => {
       { expiresIn: "7d" },
     );
 
-    user.currentTokens = token;
     await user.save();
 
     return res.status(200).json({
