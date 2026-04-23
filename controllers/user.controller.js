@@ -66,6 +66,156 @@ const updateUplineTeam = async (sponsorId) => {
     level++;
   }
 };
+// export const userRegister = async (req, res) => {
+//   const session = await mongoose.startSession();
+
+//   try {
+//     session.startTransaction();
+
+//     const { walletAddress, referredBy } = req.body;
+
+//     if (!walletAddress) {
+//       throw new Error("Wallet address is required");
+//     }
+
+//     const wallet = walletAddress.toLowerCase();
+
+//     // ==========================
+//     // CHECK EXISTING USER
+//     // ==========================
+//     const existingUser = await UserModel.findOne({
+//       walletAddress: wallet,
+//     }).session(session);
+
+//     if (existingUser) {
+//       throw new Error("User already exists");
+//     }
+
+//     const referralCode = generateReferralCode();
+//     const username = randomUsername();
+
+//     let sponsorUser = null;
+//     let sponsorId = null;
+
+//     const userCount = await UserModel.countDocuments().session(session);
+
+//     if (userCount !== 0) {
+//       if (!referredBy) {
+//         throw new Error("Referral code is required");
+//       }
+
+//       sponsorUser = await UserModel.findOne({
+//         referralCode: referredBy,
+//       }).session(session);
+
+//       if (!sponsorUser) {
+//         throw new Error("Invalid referral code");
+//       }
+
+//       sponsorId = sponsorUser._id;
+//     }
+
+//     // ==========================
+//     // BUILD UPLINE (LEVEL 3)
+//     // ==========================
+//     let uplineWallets = [];
+
+//     if (sponsorUser) {
+//       let current = sponsorUser;
+//       let level = 1;
+
+//       while (current && level <= 3) {
+//         if (current.walletAddress) {
+//           uplineWallets.push(current.walletAddress);
+//         }
+
+//         if (!current.sponserId) break;
+
+//         current = await UserModel.findById(current.sponserId).session(session);
+//         level++;
+//       }
+//     }
+
+//     // ==========================
+//     // CREATE USER
+//     // ==========================
+//     const newUserArr = await UserModel.create(
+//       [
+//         {
+//           walletAddress: wallet,
+//           referralCode,
+//           username,
+
+//           sponserId: sponsorId,
+//           parentReferedCode: referredBy || null,
+
+//           uplineWallets,
+
+//           referredUsers: [], // ✅ FIXED NAME
+//           role: "user",
+
+//           totalTeam: 0,
+//           levelWiseTeam: {},
+//         },
+//       ],
+//       { session },
+//     );
+
+//     const newUser = newUserArr[0];
+
+//     // ==========================
+//     // UPDATE SPONSOR
+//     // ==========================
+//     if (sponsorUser) {
+//       await UserModel.updateOne(
+//         { _id: sponsorUser._id },
+//         {
+//           $push: { referredUsers: newUser._id }, // ✅ SAME NAME
+//           $inc: { totalTeam: 1 },
+//         },
+//         { session },
+//       );
+//     }
+
+//     // ==========================
+//     // COMMIT
+//     // ==========================
+//     await session.commitTransaction();
+//     session.endSession();
+
+//     // ==========================
+//     // TOKEN
+//     // ==========================
+//     const token = jwt.sign(
+//       {
+//         id: newUser._id,
+//         walletAddress: newUser.walletAddress,
+//       },
+//       process.env.JWT_SECRET,
+//       { expiresIn: "7d" },
+//     );
+
+//     await newUser.save({ session });
+
+//     return res.status(201).json({
+//       success: true,
+//       message: "User registered successfully",
+//       user: newUser,
+//       token,
+//     });
+//   } catch (error) {
+//     await session.abortTransaction();
+//     session.endSession();
+
+//     console.error("Register error:", error);
+
+//     return res.status(500).json({
+//       success: false,
+//       message: error.message || "Registration failed",
+//     });
+//   }
+// };
+
 export const userRegister = async (req, res) => {
   const session = await mongoose.startSession();
 
@@ -97,7 +247,10 @@ export const userRegister = async (req, res) => {
     let sponsorUser = null;
     let sponsorId = null;
 
-    const userCount = await UserModel.countDocuments().session(session);
+    // ==========================
+    // CHECK FIRST USER
+    // ==========================
+    const userCount = await UserModel.estimatedDocumentCount();
 
     if (userCount !== 0) {
       if (!referredBy) {
@@ -116,7 +269,7 @@ export const userRegister = async (req, res) => {
     }
 
     // ==========================
-    // BUILD UPLINE (LEVEL 3)
+    // BUILD UPLINE (3 LEVEL)
     // ==========================
     let uplineWallets = [];
 
@@ -131,7 +284,10 @@ export const userRegister = async (req, res) => {
 
         if (!current.sponserId) break;
 
-        current = await UserModel.findById(current.sponserId).session(session);
+        current = await UserModel.findById(current.sponserId)
+          .select("walletAddress sponserId")
+          .session(session);
+
         level++;
       }
     }
@@ -146,12 +302,12 @@ export const userRegister = async (req, res) => {
           referralCode,
           username,
 
-          sponserId: sponsorId,
+          sponserId: sponsorId || null,
           parentReferedCode: referredBy || null,
 
           uplineWallets,
 
-          referredUsers: [], // ✅ FIXED NAME
+          referredUsers: [],
           role: "user",
 
           totalTeam: 0,
@@ -170,7 +326,7 @@ export const userRegister = async (req, res) => {
       await UserModel.updateOne(
         { _id: sponsorUser._id },
         {
-          $push: { referredUsers: newUser._id }, // ✅ SAME NAME
+          $push: { referredUsers: newUser._id },
           $inc: { totalTeam: 1 },
         },
         { session },
@@ -178,13 +334,7 @@ export const userRegister = async (req, res) => {
     }
 
     // ==========================
-    // COMMIT
-    // ==========================
-    await session.commitTransaction();
-    session.endSession();
-
-    // ==========================
-    // TOKEN
+    // GENERATE TOKEN
     // ==========================
     const token = jwt.sign(
       {
@@ -195,7 +345,14 @@ export const userRegister = async (req, res) => {
       { expiresIn: "7d" },
     );
 
+    newUser.currentToken = token;
     await newUser.save({ session });
+
+    // ==========================
+    // COMMIT TRANSACTION
+    // ==========================
+    await session.commitTransaction();
+    session.endSession();
 
     return res.status(201).json({
       success: true,
