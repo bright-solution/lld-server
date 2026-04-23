@@ -74,9 +74,6 @@ export const userRegister = async (req, res) => {
 
     const { walletAddress, referredBy } = req.body;
 
-    // ==========================
-    // VALIDATION
-    // ==========================
     if (!walletAddress) {
       throw new Error("Wallet address is required");
     }
@@ -102,9 +99,6 @@ export const userRegister = async (req, res) => {
 
     const userCount = await UserModel.countDocuments().session(session);
 
-    // ==========================
-    // REFERRAL CHECK
-    // ==========================
     if (userCount !== 0) {
       if (!referredBy) {
         throw new Error("Referral code is required");
@@ -201,7 +195,6 @@ export const userRegister = async (req, res) => {
       { expiresIn: "7d" },
     );
 
-    newUser.currentToken = token;
     await newUser.save({ session });
 
     return res.status(201).json({
