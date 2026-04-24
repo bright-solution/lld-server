@@ -27,6 +27,7 @@ const allowedOrigins = [
   "http://localhost:5173",
   "http://192.168.1.15:5173",
   "http://192.168.1.24:5173",
+  "http://192.168.1.13:5173",
 ];
 
 // ✅ CORS middleware (important)
@@ -61,7 +62,6 @@ app.use(
 
 app.use("/api/users", UserRouter);
 app.use("/api/admin", AdminRouter);
-app.use("/api/lld", lldRouter);
 
 connectToDB()
   .then(() => {

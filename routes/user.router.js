@@ -33,7 +33,10 @@ import {
 import IsAuthenticated from "../middlewares/IsAuthenticated.js";
 import { processWithdrawal } from "../controllers/withdrwal.controller.js";
 import { getBanners } from "../controllers/admin.controller.js";
-import { getUserTransactions } from "../controllers/Lldtransaction.controller.js";
+import {
+  getUserTransactions,
+  saveLldBuy,
+} from "../controllers/Lldtransaction.controller.js";
 import { createStake } from "../controllers/stake.controller.js";
 
 const router = express.Router();
@@ -88,4 +91,5 @@ router
 router
   .route("/get-withdrawal-history")
   .get(IsAuthenticated, getWithdrawalHistory);
+router.post("/buy-lld", IsAuthenticated, saveLldBuy);
 export default router;
