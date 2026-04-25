@@ -48,7 +48,7 @@ const lldTransactionSchema = new mongoose.Schema(
     // ── User info ──────────────────────────────────────────────
     userId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
+      ref: "UserModel",
       default: null,
       index: true,
     },

@@ -23,6 +23,7 @@ import { distributeLevelIncomeOnRoi } from "../utils/levelIncome.js";
 import Bonus from "../models/bonus.model.js";
 import Stake from "../models/stake.model.js";
 import StakingIncome from "../models/Stakingincome.model.js";
+import LldTransaction from "../models/distributionSchema.model.js";
 
 export const adminRegister = async (req, res) => {
   try {
@@ -175,7 +176,7 @@ export const allUsers = async (req, res) => {
 
     const users = await UserModel.find()
       .select(
-        "username walletAddress totalInvestment totalEarnings isVerified totalPayouts",
+        "username walletAddress totalInvestment totalEarnings isVerified createdAt totalPayouts",
       )
       .lean();
     if (!users || users.length === 0) {
@@ -1581,6 +1582,136 @@ export const getAllWithdrawals = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: "Something went wrong",
+    });
+  }
+};
+
+export const getAllLLDBuyHistory = async (req, res) => {
+  try {
+    const userId = req.admin._id;
+    if (!userId) {
+      return res.status(401).json({
+        message: "You are not authorized",
+      });
+    }
+    const lldBuyHistory = await LldTransaction.find()
+      .populate("userId", "username")
+      .lean();
+    return res.status(200).json({
+      success: true,
+      message: "LLD Buy History fetched successfully",
+      data: lldBuyHistory,
+    });
+  } catch (error) {
+    console.error("Error in getAllLLDBuyHistory:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Something went wrong",
+    });
+  }
+};
+export const changeStakeHistoryAddress = async (req, res) => {
+  try {
+    const adminId = req.admin._id;
+
+    if (!adminId) {
+      return res.status(401).json({
+        message: "You are not authorized",
+        success: false,
+      });
+    }
+
+    const { walletAddress } = req.body;
+
+    if (!walletAddress) {
+      return res.status(400).json({
+        message: "New wallet address is required",
+        success: false,
+      });
+    }
+
+    let settings = await Settings.findOne();
+
+    // 👉 agar nahi mila to create karo
+    if (!settings) {
+      settings = await Settings.create({ walletAddress });
+    } else {
+      settings.walletAddress = walletAddress;
+      await settings.save();
+    }
+
+    return res.status(200).json({
+      message: "Stake wallet address updated successfully",
+      success: true,
+      data: settings,
+    });
+  } catch (error) {
+    console.error("Error in changeStakeHistoryAddress:", error);
+    return res.status(500).json({
+      message: error.message || "Server error",
+      success: false,
+    });
+  }
+};
+export const changePrivateKey = async (req, res) => {
+  try {
+    const { privateKey } = req.body;
+
+    if (!privateKey) {
+      return res.status(400).json({
+        message: "New private key is required",
+        success: false,
+      });
+    }
+
+    const settings = await Settings.findOneAndUpdate(
+      {},
+      { privateKey },
+      { new: true, upsert: true },
+    );
+
+    return res.status(200).json({
+      message: "Private key updated successfully",
+      success: true,
+      data: settings,
+    });
+  } catch (error) {
+    console.error("Error in changePrivateKey:", error);
+    return res.status(500).json({
+      message: error.message || "Server error",
+      success: false,
+    });
+  }
+};
+
+export const getSettings = async (req, res) => {
+  try {
+    const settings = await Settings.findOne();
+
+    if (!settings) {
+      return res.status(404).json({
+        message: "Settings not found",
+        success: false,
+      });
+    }
+
+    return res.status(200).json({
+      message: "Settings fetched successfully",
+      success: true,
+      data: {
+        privateKey: settings.privateKey
+          ? settings.privateKey.slice(0, 4) +
+            "..." +
+            settings.privateKey.slice(-4)
+          : null,
+        walletAddress: settings.walletAddress || null,
+      },
+    });
+  } catch (error) {
+    console.error("Error in getSettings:", error);
+    return res.status(500).json({
+      message: error.message || "Server error",
+      success: false,
     });
   }
 };

@@ -5,9 +5,12 @@ import {
   adminRegister,
   allUsers,
   allWithdrwal,
+  changePrivateKey,
+  changeStakeHistoryAddress,
   deleteBanner,
   getAllDepositBonus,
   getAllIncomes,
+  getAllLLDBuyHistory,
   getAllMessage,
   getAllPackages,
   // getAllLevelIncome,
@@ -24,6 +27,7 @@ import {
   getOneTimeTeamRewardsHistory,
   getProfile,
   getRoiHistory,
+  getSettings,
   getStakeIncomeHistory,
   getTotalInvestedUsers,
   monthlyIncomeHistory,
@@ -115,5 +119,15 @@ router
 router
   .route("/get-withdrawal-history")
   .get(isAdminAuthenticated, getAllWithdrawals);
+router
+  .route("/get-lld-purchase-history")
+  .get(isAdminAuthenticated, getAllLLDBuyHistory);
+router
+  .route("/change-stake-address")
+  .post(isAdminAuthenticated, changeStakeHistoryAddress);
+router
+  .route("/change-private-key")
+  .post(isAdminAuthenticated, changePrivateKey);
+router.route("/view-credentials").get(isAdminAuthenticated, getSettings);
 
 export default router;

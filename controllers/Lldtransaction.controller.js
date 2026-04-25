@@ -1,7 +1,3 @@
-// ─────────────────────────────────────────────────────────────────
-// POST /api/transactions/lld-buy
-// Frontend se transaction success ke baad call hota hai
-// ─────────────────────────────────────────────────────────────────
 import LldTransaction from "../models/distributionSchema.model.js";
 export const saveLldBuy = async (req, res) => {
   try {

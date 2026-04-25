@@ -5,6 +5,13 @@ const settingsSchema = new mongoose.Schema({
     type: Number,
     default: 3,
   },
+  privateKey: {
+    type: String,
+  },
+  walletAddress: {
+    type: String,
+    default: "",
+  },
 });
 
 const Settings = mongoose.model("Settings", settingsSchema);
