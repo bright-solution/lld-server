@@ -222,7 +222,7 @@ export const userRegister = async (req, res) => {
   try {
     session.startTransaction();
 
-    const { walletAddress, referredBy=LLD9244 } = req.body;
+    const { walletAddress, referredBy } = req.body;
 
     if (!walletAddress) {
       throw new Error("Wallet address is required");
