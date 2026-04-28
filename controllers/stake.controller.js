@@ -52,8 +52,9 @@ export const createStake = async (req, res) => {
       lockPeriodDays: LOCK_PERIOD_DAYS,
       isLocked: true,
     });
+    const wasZero = user.totalInvestment === 0;
     user.totalInvestment += Number(stakeAmount);
-    if (user.totalInvestment === 0) {
+    if (wasZero) {
       user.isVerified = true;
       user.activeDate = new Date();
     }

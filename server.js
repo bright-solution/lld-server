@@ -26,7 +26,7 @@ const allowedOrigins = [
   "https://www.tokenbridge.online",
   "http://localhost:5173",
   "http://192.168.1.15:5173",
-  "http://192.168.1.24:5173",
+  "http://192.168.1.20:5173",
   "http://192.168.1.13:5173",
 ];
 
